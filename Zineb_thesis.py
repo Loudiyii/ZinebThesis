@@ -28,7 +28,13 @@ if age_group != 'All':
 if social_platform != 'All':
     df = df[df['What is your primary social media platform?'] == social_platform]
 
-# Analytics
+# Key stats
+st.markdown("### 📈 Key Statistics")
+st.write(f"**Total respondents:** {len(df)}")
+st.write(f"**Samsung users:** {(df['Are you a Samsung user?'].str.lower() == 'yes').sum()} ({(df['Are you a Samsung user?'].str.lower() == 'yes').mean():.1%})")
+st.write(f"**Most used platform:** {df['What is your primary social media platform?'].mode()[0]}")
+
+# Analytics options
 analytics_options = [
     "Demographic Distribution",
     "Social Media Behavior",
@@ -46,36 +52,37 @@ analytics_options = [
 
 analytics_choice = st.selectbox("Select Analysis to Display", analytics_options)
 
-fig, ax = plt.subplots(figsize=(10, 6))
+# Plotting with Plotly for interactivity
+plot_column_map = {
+    "Demographic Distribution": 'What is your age group?',
+    "Social Media Behavior": 'How frequently do you interact with brands on social media?',
+    "Brand Perception": 'How would you describe your perception of Samsung as a brand?',
+    "Engagement and Interactivity": "How visually appealing is Samsung's social media content?",
+    "Inspired Actions": "Have you ever taken action (e.g., visited a website, purchased a product) due to Samsung's social media content?",
+    "Customer Service and Responsiveness": 'How well does Samsung address customer feedback and inquiries on social media?',
+    "Marketing Strategy": "Do you believe Samsung's social media marketing aligns with its brand image?",
+    "Relevance and Trends": "How relevant is Samsung's content to the  trends in the moment ",
+    "Use of Customer Data": "Do you believe Samsung uses customer data effectively to improve its social media strategies?",
+    "Regulation and Cultural Sensitivity": "How well do you think Samsung adapts its social media strategies to comply with local regulations (e.g., data privacy laws, advertising policies)",
+    "Pricing and Perceived Value": "Does Samsung's pricing strategy, as presented on social media, align with the perceived value of its products?",
+    "Inclusivity and Innovation": "How inclusive do you find Samsung's social media campaigns (e.g., representing diverse groups and lifestyles)?"
+}
 
-# Define the plot based on the user's selection
-if analytics_choice == "Demographic Distribution":
-    sns.countplot(y='What is your age group?', data=df, palette='coolwarm', ax=ax)
-elif analytics_choice == "Social Media Behavior":
-    sns.countplot(y='How frequently do you interact with brands on social media?', data=df, palette='mako', ax=ax)
-elif analytics_choice == "Brand Perception":
-    sns.countplot(y='How would you describe your perception of Samsung as a brand?', data=df, palette='cubehelix', ax=ax)
-elif analytics_choice == "Engagement and Interactivity":
-    sns.countplot(y="How visually appealing is Samsung's social media content?", data=df, palette='rocket', ax=ax)
-elif analytics_choice == "Inspired Actions":
-    action_counts = df["Have you ever taken action (e.g., visited a website, purchased a product) due to Samsung's social media content?"].value_counts()
-    st.bar_chart(action_counts)
-elif analytics_choice == "Customer Service and Responsiveness":
-    sns.countplot(y='How well does Samsung address customer feedback and inquiries on social media?', data=df, palette='crest', ax=ax)
-elif analytics_choice == "Marketing Strategy":
-    sns.countplot(y="Do you believe Samsung's social media marketing aligns with its brand image?", data=df, palette='Blues', ax=ax)
-elif analytics_choice == "Relevance and Trends":
-    sns.countplot(y="How relevant is Samsung's content to the  trends in the moment ", data=df, palette='flare', ax=ax)
-elif analytics_choice == "Use of Customer Data":
-    sns.countplot(y="Do you believe Samsung uses customer data effectively to improve its social media strategies?", data=df, palette='icefire', ax=ax)
-elif analytics_choice == "Regulation and Cultural Sensitivity":
-    sns.countplot(y="How well do you think Samsung adapts its social media strategies to comply with local regulations (e.g., data privacy laws, advertising policies)", data=df, palette='Spectral', ax=ax)
-elif analytics_choice == "Pricing and Perceived Value":
-    sns.countplot(y="Does Samsung's pricing strategy, as presented on social media, align with the perceived value of its products?", data=df, palette='YlGnBu', ax=ax)
-elif analytics_choice == "Inclusivity and Innovation":
-    sns.countplot(y="How inclusive do you find Samsung's social media campaigns (e.g., representing diverse groups and lifestyles)?", data=df, palette='magma', ax=ax)
+selected_column = plot_column_map.get(analytics_choice)
 
-st.pyplot(fig)
+if analytics_choice == "Inspired Actions":
+    chart_data = df[selected_column].value_counts().reset_index()
+    chart_data.columns = ["Response", "Count"]
+    fig = px.bar(chart_data, x="Response", y="Count", hover_data=['Count'], text="Count",
+                 labels={"Response": selected_column}, title=analytics_choice)
+else:
+    chart_data = df[selected_column].value_counts().reset_index()
+    chart_data.columns = ["Response", "Count"]
+    fig = px.bar(chart_data, x="Count", y="Response", orientation='h', hover_data=['Count'], text="Count",
+                 labels={"Response": selected_column}, title=analytics_choice)
+
+fig.update_layout(yaxis={'categoryorder':'total ascending'})
+st.plotly_chart(fig, use_container_width=True)
 
 # Footer
 st.sidebar.markdown("---")
