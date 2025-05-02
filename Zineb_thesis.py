@@ -71,16 +71,18 @@ plot_column_map = {
 
 selected_column = plot_column_map.get(analytics_choice)
 
+chart_data = df[selected_column].value_counts().reset_index()
+chart_data.columns = ["Response", "Count"]
+colors = px.colors.qualitative.Safe
+
 if analytics_choice == "Inspired Actions":
-    chart_data = df[selected_column].value_counts().reset_index()
-    chart_data.columns = ["Response", "Count"]
     fig = px.bar(chart_data, x="Response", y="Count", hover_data=['Count'], text="Count",
-                 labels={"Response": selected_column}, title=analytics_choice)
+                 labels={"Response": selected_column}, title=analytics_choice,
+                 color="Response", color_discrete_sequence=colors)
 else:
-    chart_data = df[selected_column].value_counts().reset_index()
-    chart_data.columns = ["Response", "Count"]
     fig = px.bar(chart_data, x="Count", y="Response", orientation='h', hover_data=['Count'], text="Count",
-                 labels={"Response": selected_column}, title=analytics_choice)
+                 labels={"Response": selected_column}, title=analytics_choice,
+                 color="Response", color_discrete_sequence=colors)
 
 fig.update_layout(yaxis={'categoryorder':'total ascending'})
 st.plotly_chart(fig, use_container_width=True)
