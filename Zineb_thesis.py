@@ -18,7 +18,7 @@ AGE_ORDER = [
 @st.cache_data
 def load_data():
     df = pd.read_excel("thesis.xlsx", sheet_name="Réponses au formulaire 1")
-    # clean & standardize whitespace / case
+    # normalize the strings
     df["What is your age group?"] = (
         df["What is your age group?"]
         .astype(str)
@@ -52,11 +52,15 @@ st.title("📊 Samsung Social Media Analytics")
 st.markdown("#### Interactive Analysis of Samsung's Social Media Questionnaire Responses")
 
 st.markdown("### 📈 Key Statistics")
-st.write(f"**Total respondents:** {len(filtered)}")
-yes_samsung = (filtered["Are you a Samsung user?"].str.lower() == "yes").sum()
-st.write(f"**Samsung users:** {yes_samsung} ({yes_samsung/len(filtered):.1%})")
-if not filtered["What is your primary social media platform?"].mode().empty:
-    st.write(f"**Most used platform:** {filtered['What is your primary social media platform?'].mode()[0]}")
+if len(filtered) == 0:
+    st.warning("No data for that combination of filters.")
+else:
+    st.write(f"**Total respondents:** {len(filtered)}")
+    yes_samsung = (filtered["Are you a Samsung user?"].str.lower() == "yes").sum()
+    st.write(f"**Samsung users:** {yes_samsung} ({yes_samsung/len(filtered):.1%})")
+    mode_plat = filtered["What is your primary social media platform?"].mode()
+    if not mode_plat.empty:
+        st.write(f"**Most used platform:** {mode_plat[0]}")
 
 # --- Analytics selector ---
 analytics_options = [
@@ -93,8 +97,10 @@ plot_column_map = {
 selected_col = plot_column_map[analytics_choice]
 
 # --- Build & show the chart ---
+if len(filtered) == 0:
+    st.stop()
+
 if analytics_choice == "Demographic Distribution":
-    # ensure every age bucket appears (even if count=0)
     counts = (
         filtered[selected_col]
         .value_counts()
@@ -115,23 +121,24 @@ if analytics_choice == "Demographic Distribution":
         title="Demographic Distribution",
         category_orders={"Response": AGE_ORDER},
     )
-    # enforce the array order on the y-axis
     fig.update_layout(
         yaxis=dict(
             categoryorder="array",
             categoryarray=AGE_ORDER
         )
     )
+
 else:
-    # generic value_counts for other questions
+    # generic case
     chart_data = (
         filtered[selected_col]
         .value_counts()
         .reset_index()
-        .rename(columns={"index": "Response", selected_col: "Count"})
     )
+    # force the columns to Response/Count regardless of the original name
+    chart_data.columns = ["Response", "Count"]
+
     if analytics_choice == "Inspired Actions":
-        # vertical bar
         fig = px.bar(
             chart_data,
             x="Response",
@@ -140,7 +147,6 @@ else:
             title=analytics_choice,
         )
     else:
-        # horizontal bar
         fig = px.bar(
             chart_data,
             x="Count",
