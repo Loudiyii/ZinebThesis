@@ -14,18 +14,19 @@ AGE_ORDER = [
     "55+",
 ]
 
+# Pull in a discrete color sequence
+COLORS = px.colors.qualitative.Safe
+
 # 2) Load & cast your column to an ordered Categorical
 @st.cache_data
 def load_data():
     df = pd.read_excel("thesis.xlsx", sheet_name="Réponses au formulaire 1")
-    # normalize the strings
     df["What is your age group?"] = (
         df["What is your age group?"]
         .astype(str)
         .str.strip()
         .str.lower()
     )
-    # cast to ordered categorical
     cat_type = pd.CategoricalDtype(categories=AGE_ORDER, ordered=True)
     df["What is your age group?"] = df["What is your age group?"].astype(cat_type)
     return df
@@ -107,11 +108,7 @@ if analytics_choice == "Demographic Distribution":
         .reindex(AGE_ORDER, fill_value=0)
         .astype(int)
     )
-    chart_data = (
-        counts
-        .rename_axis("Response")
-        .reset_index(name="Count")
-    )
+    chart_data = counts.rename_axis("Response").reset_index(name="Count")
     fig = px.bar(
         chart_data,
         x="Count",
@@ -120,6 +117,8 @@ if analytics_choice == "Demographic Distribution":
         text="Count",
         title="Demographic Distribution",
         category_orders={"Response": AGE_ORDER},
+        color="Response",
+        color_discrete_sequence=COLORS,
     )
     fig.update_layout(
         yaxis=dict(
@@ -129,13 +128,11 @@ if analytics_choice == "Demographic Distribution":
     )
 
 else:
-    # generic case
     chart_data = (
         filtered[selected_col]
         .value_counts()
         .reset_index()
     )
-    # force the columns to Response/Count regardless of the original name
     chart_data.columns = ["Response", "Count"]
 
     if analytics_choice == "Inspired Actions":
@@ -145,6 +142,8 @@ else:
             y="Count",
             text="Count",
             title=analytics_choice,
+            color="Response",
+            color_discrete_sequence=COLORS,
         )
     else:
         fig = px.bar(
@@ -154,6 +153,8 @@ else:
             orientation="h",
             text="Count",
             title=analytics_choice,
+            color="Response",
+            color_discrete_sequence=COLORS,
         )
         fig.update_layout(yaxis={"categoryorder": "total ascending"})
 
