@@ -2,10 +2,10 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-st.set_page_config(layout='wide')
+st.set_page_config(layout="wide")
 
 # 1) Define the exact age‐group order you want:
-age_order = [
+AGE_ORDER = [
     "under 18",
     "18-24",
     "25-34",
@@ -17,8 +17,16 @@ age_order = [
 # 2) Load & cast your column to an ordered Categorical
 @st.cache_data
 def load_data():
-    df = pd.read_excel(r"thesis.xlsx", sheet_name="Réponses au formulaire 1")
-    cat_type = pd.CategoricalDtype(categories=age_order, ordered=True)
+    df = pd.read_excel("thesis.xlsx", sheet_name="Réponses au formulaire 1")
+    # clean & standardize whitespace / case
+    df["What is your age group?"] = (
+        df["What is your age group?"]
+        .astype(str)
+        .str.strip()
+        .str.lower()
+    )
+    # cast to ordered categorical
+    cat_type = pd.CategoricalDtype(categories=AGE_ORDER, ordered=True)
     df["What is your age group?"] = df["What is your age group?"].astype(cat_type)
     return df
 
@@ -26,13 +34,10 @@ df = load_data()
 
 # --- Sidebar filters ---
 st.sidebar.header("Filters")
-
-# Build the age dropdown from the Categorical categories (so it’s in the right order)
-age_opts = ["All"] + df["What is your age group?"].cat.categories.tolist()
+age_opts = ["All"] + AGE_ORDER
 age_group = st.sidebar.selectbox("Age Group", age_opts)
 
-# Primary platform filter
-platform_opts = ["All"] + sorted(df["What is your primary social media platform?"].unique())
+platform_opts = ["All"] + sorted(df["What is your primary social media platform?"].dropna().unique())
 social_platform = st.sidebar.selectbox("Primary Social Media Platform", platform_opts)
 
 # Apply filters
@@ -50,7 +55,8 @@ st.markdown("### 📈 Key Statistics")
 st.write(f"**Total respondents:** {len(filtered)}")
 yes_samsung = (filtered["Are you a Samsung user?"].str.lower() == "yes").sum()
 st.write(f"**Samsung users:** {yes_samsung} ({yes_samsung/len(filtered):.1%})")
-st.write(f"**Most used platform:** {filtered['What is your primary social media platform?'].mode()[0]}")
+if not filtered["What is your primary social media platform?"].mode().empty:
+    st.write(f"**Most used platform:** {filtered['What is your primary social media platform?'].mode()[0]}")
 
 # --- Analytics selector ---
 analytics_options = [
@@ -84,24 +90,40 @@ plot_column_map = {
     "Pricing and Perceived Value": "Does Samsung's pricing strategy, as presented on social media, align with the perceived value of its products?",
     "Inclusivity and Innovation": "How inclusive do you find Samsung's social media campaigns (e.g., representing diverse groups and lifestyles)?"
 }
-
 selected_col = plot_column_map[analytics_choice]
 
-# Build the bar‐chart data
+# --- Build & show the chart ---
 if analytics_choice == "Demographic Distribution":
     # ensure every age bucket appears (even if count=0)
-    counts = filtered[selected_col].value_counts().reindex(age_order, fill_value=0)
-    chart_data = counts.reset_index().rename(columns={"index": "Response", selected_col: "Count"})
+    counts = (
+        filtered[selected_col]
+        .value_counts()
+        .reindex(AGE_ORDER, fill_value=0)
+        .astype(int)
+    )
+    chart_data = (
+        counts
+        .rename_axis("Response")
+        .reset_index(name="Count")
+    )
     fig = px.bar(
         chart_data,
         x="Count",
         y="Response",
         orientation="h",
         text="Count",
-        title=analytics_choice,
-        category_orders={"Response": age_order},
+        title="Demographic Distribution",
+        category_orders={"Response": AGE_ORDER},
+    )
+    # enforce the array order on the y-axis
+    fig.update_layout(
+        yaxis=dict(
+            categoryorder="array",
+            categoryarray=AGE_ORDER
+        )
     )
 else:
+    # generic value_counts for other questions
     chart_data = (
         filtered[selected_col]
         .value_counts()
@@ -109,7 +131,7 @@ else:
         .rename(columns={"index": "Response", selected_col: "Count"})
     )
     if analytics_choice == "Inspired Actions":
-        # vertical bars
+        # vertical bar
         fig = px.bar(
             chart_data,
             x="Response",
@@ -118,7 +140,7 @@ else:
             title=analytics_choice,
         )
     else:
-        # horizontal bars
+        # horizontal bar
         fig = px.bar(
             chart_data,
             x="Count",
@@ -127,10 +149,7 @@ else:
             text="Count",
             title=analytics_choice,
         )
-
-# Global layout tweak: sort smaller→larger if not age distribution
-if analytics_choice != "Demographic Distribution":
-    fig.update_layout(yaxis={"categoryorder": "total ascending"})
+        fig.update_layout(yaxis={"categoryorder": "total ascending"})
 
 st.plotly_chart(fig, use_container_width=True)
 
